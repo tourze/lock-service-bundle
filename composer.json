@@ -5,6 +5,8 @@
   "license": "MIT",
   "require": {
     "php": "^8.1",
+    "symfony/console": "^6.4",
+    "symfony/messenger": "^6.4",
     "symfony/lock": "^6.4",
     "symfony/framework-bundle": "^6.4",
     "psr/log": "^3|^2|^1"
