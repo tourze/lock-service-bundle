@@ -20,7 +20,13 @@
       "Tourze\\LockServiceBundle\\": "src"
     }
   },
+  "autoload-dev": {
+    "psr-4": {
+      "Tourze\\LockServiceBundle\\Tests\\": "tests"
+    }
+  },
   "require-dev": {
+    "phpunit/phpunit": "^10.0",
     "phpstan/phpstan": "^2.1"
   },
   "scripts": {
