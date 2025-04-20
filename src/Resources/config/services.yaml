@@ -7,3 +7,24 @@ services:
 
   Tourze\LockServiceBundle\Service\:
     resource: '../../Service/'
+
+  # 默认FlockStore是写到临时目录的，多项目同时跑可能有冲突，我们将其改为项目目录吧
+  Symfony\Component\Lock\Store\FlockStore:
+    arguments: [ '%kernel.cache_dir%' ]
+    tags: [ 'lock.store' ]
+    lazy: true
+  Tourze\LockServiceBundle\Store\RedisClusterStore:
+    arguments: [ '@snc_redis.default' ]
+    tags: [ 'lock.store' ]
+    lazy: true
+  Symfony\Component\Lock\Store\DoctrineDbalStore:
+    arguments: [ '@doctrine.dbal.lock_connection' ]
+    tags: [ 'lock.store' ]
+    lazy: true
+  Tourze\LockServiceBundle\Store\SmartLockStore:
+    autowire: true
+    tags: [ 'lock.store' ]
+    lazy: true
+  Symfony\Component\Lock\LockFactory:
+    arguments: [ '@Tourze\LockServiceBundle\Store\SmartLockStore' ]
+    lazy: true
