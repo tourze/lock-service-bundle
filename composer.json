@@ -9,6 +9,7 @@
     "symfony/messenger": "^6.4",
     "symfony/lock": "^6.4",
     "symfony/http-kernel": "^6.4",
+    "symfony/event-dispatcher": "^6.4",
     "symfony/config": "^6.4",
     "symfony/dependency-injection": "^6.4",
     "symfony/framework-bundle": "^6.4",
