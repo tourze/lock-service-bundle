@@ -13,7 +13,7 @@
     "symfony/config": "^6.4",
     "symfony/dependency-injection": "^6.4",
     "symfony/framework-bundle": "^6.4",
-    "symfony/service-contracts": "^3",
+    "symfony/service-contracts": "^3.5",
     "symfony/yaml": "^6.4 || ^7.1",
     "psr/log": "^3|^2|^1",
     "snc/redis-bundle": "^4.8"
