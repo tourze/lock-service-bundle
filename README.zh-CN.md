@@ -7,60 +7,60 @@
 [![Quality Score](https://img.shields.io/scrutinizer/g/tourze/lock-service-bundle.svg?style=flat-square)](https://scrutinizer-ci.com/g/tourze/lock-service-bundle)
 [![Total Downloads](https://img.shields.io/packagist/dt/tourze/lock-service-bundle.svg?style=flat-square)](https://packagist.org/packages/tourze/lock-service-bundle)
 
-A flexible distributed lock service bundle for Symfony, supporting Redis Cluster, database, and file-based backends. Ideal for resource mutual exclusion and synchronization in high concurrency scenarios.
+简要描述：Lock Service Bundle 为 Symfony 提供了灵活的分布式锁服务，支持 Redis 集群、数据库、文件多种后端，适用于高并发场景下的资源互斥与同步。
 
-## Features
+## 功能特性
 
-- Supports Redis Cluster, database, and file lock backends
-- SmartLockStore for automatic backend switching
-- Provides read/write locks, blocking locks, and more
-- Seamless integration with Symfony ecosystem
-- Easy to extend and customize
+- 支持 Redis 集群、数据库、文件多种锁存储后端
+- 提供 SmartLockStore 自动切换后端实现
+- 支持读写锁、阻塞锁等多种锁模式
+- 与 Symfony 生态无缝集成
+- 便于扩展和自定义
 
-## Installation
+## 安装说明
 
-### Requirements
+### 环境要求
 
 - PHP >= 8.1
 - Symfony >= 6.4
-- Redis, database, or file backend configured
+- 需配置 Redis、数据库等后端服务
 
-### Composer
+### 使用 Composer 安装
 
 ```bash
 composer require tourze/lock-service-bundle
 ```
 
-## Quick Start
+## 快速开始
 
 ```php
 use Tourze\LockServiceBundle\Service\LockService;
 
-$lockService = ... // Get via dependency injection
+$lockService = ... // 通过依赖注入获取
 
-// Blocking execution
+// 阻塞执行
 $lockService->blockingRun('resource-key', function () {
-    // Logic protected by lock
+    // 受锁保护的逻辑
 });
 ```
 
-## Configuration
+## 配置说明
 
-Select lock type via `APP_LOCK_TYPE` env variable:
+可通过环境变量 `APP_LOCK_TYPE` 选择锁类型：
 
 - redis
 - redis-cluster
 - dbal
 - flock
 
-## Contributing
+## 贡献指南
 
-Issues and PRs are welcome. Please follow PSR standards and provide tests.
+欢迎提交 Issue 和 PR，贡献代码请遵循 PSR 标准并补充测试。
 
-## License
+## 版权和许可
 
 MIT License
 
-## Changelog
+## 更新日志
 
-See CHANGELOG.md
+详见 CHANGELOG.md
