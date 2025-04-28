@@ -13,7 +13,7 @@ A flexible distributed lock service bundle for Symfony, supporting Redis Cluster
 
 - Supports Redis Cluster, database, and file lock backends
 - SmartLockStore for automatic backend switching
-- Provides read/write locks, blocking locks, and more
+- Provides read/write locks, blocking locks, and multi-resource locking
 - Seamless integration with Symfony ecosystem
 - Easy to extend and customize
 
@@ -42,20 +42,50 @@ $lockService = ... // Get via dependency injection
 $lockService->blockingRun('resource-key', function () {
     // Logic protected by lock
 });
+
+// Multi-resource locking
+$lockService->blockingRun(['key1', 'key2'], function () {
+    // Logic protected by multiple locks
+});
 ```
 
 ## Configuration
 
-Select lock type via `APP_LOCK_TYPE` env variable:
+Select lock type via `APP_LOCK_TYPE` environment variable:
 
 - redis
 - redis-cluster
 - dbal
 - flock
 
+Example:
+
+```dotenv
+APP_LOCK_TYPE=redis
+```
+
+## Advanced Usage
+
+- Automatic backend switching via SmartLockStore
+- Retry and wait mechanism for lock acquisition
+- Read/write lock support (see RedisClusterStore)
+- Extensible: implement `LockEntity` interface for custom lock resources
+
+## Entity Design
+
+This bundle provides a `LockEntity` interface for defining lock resources:
+
+```php
+interface LockEntity {
+    public function retrieveLockResource(): string;
+}
+```
+
+Implement this interface for your business entities to enable fine-grained distributed locking.
+
 ## Contributing
 
-Issues and PRs are welcome. Please follow PSR standards and provide tests.
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details. Follow PSR standards and provide tests.
 
 ## License
 
