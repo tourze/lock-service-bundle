@@ -14,7 +14,7 @@ services:
     tags: [ 'lock.store' ]
     lazy: true
   Tourze\LockServiceBundle\Store\RedisClusterStore:
-    arguments: [ '@snc_redis.default' ]
+    arguments: [ '@snc_redis.lock' ]
     tags: [ 'lock.store' ]
     lazy: true
   Symfony\Component\Lock\Store\DoctrineDbalStore:
