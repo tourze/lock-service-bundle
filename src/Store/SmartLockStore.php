@@ -24,10 +24,12 @@ class SmartLockStore implements PersistingStoreInterface
         private readonly FlockStore $flockStore,
     ) {
         // 支持几种类型的锁：Redis / Redis集群 / 数据库 / 文件锁
-        if ('redis' === $_ENV['APP_LOCK_TYPE'] || 'redis-cluster' === $_ENV['APP_LOCK_TYPE']) {
+        $lockType = $_ENV['APP_LOCK_TYPE'] ?? 'file';
+
+        if ('redis' === $lockType || 'redis-cluster' === $lockType) {
             // 默认的RedisStore不能兼容阿里云的，只能自己覆盖一次
             $this->inner = $this->redisClusterStore;
-        } elseif ('dbal' === $_ENV['APP_LOCK_TYPE']) {
+        } elseif ('dbal' === $lockType) {
             $this->inner = $this->doctrineDbalStore;
         } else {
             $this->inner = $this->flockStore;
