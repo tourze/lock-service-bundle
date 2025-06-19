@@ -43,13 +43,15 @@ class LockService implements ResetInterface
     }
 
     /**
-     * @var array 记录当前正在执行的锁，用于减少重复的锁
+     * @var array<string, int> 记录当前正在执行的锁，用于减少重复的锁
      */
     private array $currentLocks = [];
 
     /**
      * 带锁执行指定逻辑
      * 当有同样锁的逻辑在执行时，系统会暂停等待
+     * 
+     * @param LockEntity|string|array<mixed> $entity
      */
     public function blockingRun(LockEntity|string|array $entity, callable $callback): mixed
     {

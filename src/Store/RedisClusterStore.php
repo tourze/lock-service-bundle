@@ -67,7 +67,8 @@ class RedisClusterStore implements SharedLockStoreInterface
         ';
 
         $key->reduceLifetime($this->initialTtl);
-        if (!$this->evaluate($script, (string) $key, [microtime(true), $this->getUniqueToken($key), (int) ceil($this->initialTtl * 1000)])) {
+        $result = $this->evaluate($script, (string) $key, [microtime(true), $this->getUniqueToken($key), (int) ceil($this->initialTtl * 1000)]);
+        if (!is_bool($result) || !$result) {
             throw new LockConflictedException();
         }
 
@@ -106,7 +107,8 @@ class RedisClusterStore implements SharedLockStoreInterface
         ';
 
         $key->reduceLifetime($this->initialTtl);
-        if (!$this->evaluate($script, (string) $key, [microtime(true), $this->getUniqueToken($key), (int) ceil($this->initialTtl * 1000)])) {
+        $result = $this->evaluate($script, (string) $key, [microtime(true), $this->getUniqueToken($key), (int) ceil($this->initialTtl * 1000)]);
+        if (!is_bool($result) || !$result) {
             throw new LockConflictedException();
         }
 
@@ -145,7 +147,8 @@ class RedisClusterStore implements SharedLockStoreInterface
         ';
 
         $key->reduceLifetime($ttl);
-        if (!$this->evaluate($script, (string) $key, [microtime(true), $this->getUniqueToken($key), (int) ceil($ttl * 1000)])) {
+        $result = $this->evaluate($script, (string) $key, [microtime(true), $this->getUniqueToken($key), (int) ceil($ttl * 1000)]);
+        if (!is_bool($result) || !$result) {
             throw new LockConflictedException();
         }
 
@@ -206,6 +209,9 @@ class RedisClusterStore implements SharedLockStoreInterface
         return (bool) $this->evaluate($script, (string) $key, [microtime(true), $this->getUniqueToken($key)]);
     }
 
+    /**
+     * @param array<int, mixed> $args
+     */
     private function evaluate(string $script, string $resource, array $args): mixed
     {
         $this->redis->clearLastError();
