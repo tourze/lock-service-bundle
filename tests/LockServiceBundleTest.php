@@ -44,7 +44,6 @@ class LockServiceBundleTest extends TestCase
     {
         $dependencies = LockServiceBundle::getBundleDependencies();
 
-        $this->assertIsArray($dependencies);
         $this->assertArrayHasKey(SncRedisBundle::class, $dependencies);
         $this->assertEquals(['all' => true], $dependencies[SncRedisBundle::class]);
     }

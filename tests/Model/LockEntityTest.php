@@ -11,6 +11,16 @@ use Tourze\LockServiceBundle\Model\LockEntity;
 class LockEntityTest extends TestCase
 {
     /**
+     * 创建测试用的LockEntity实现
+     */
+    private function createTestEntity(string $resource): LockEntity
+    {
+        return new class($resource) implements LockEntity {
+            public function __construct(private readonly string $resource) {}
+            public function retrieveLockResource(): string { return $this->resource; }
+        };
+    }
+    /**
      * 测试接口方法存在
      */
     public function test_interface_hasRequiredMethod(): void
@@ -21,7 +31,7 @@ class LockEntityTest extends TestCase
 
         $method = $reflection->getMethod('retrieveLockResource');
         $this->assertTrue($method->isPublic());
-        $this->assertEquals('string', $method->getReturnType()?->getName());
+        $this->assertEquals('string', (string)$method->getReturnType());
     }
 
     /**
@@ -41,11 +51,14 @@ class LockEntityTest extends TestCase
     }
 
     /**
-     * 测试 TestLockEntity 实现
+     * 测试具体实现类
      */
-    public function test_testLockEntity_implementation(): void
+    public function test_concreteImplementation(): void
     {
-        $entity = new TestLockEntity('my-resource');
+        $entity = new class('my-resource') implements LockEntity {
+            public function __construct(private readonly string $resource) {}
+            public function retrieveLockResource(): string { return $this->resource; }
+        };
 
         $this->assertInstanceOf(LockEntity::class, $entity);
         $this->assertEquals('my-resource', $entity->retrieveLockResource());
@@ -56,8 +69,8 @@ class LockEntityTest extends TestCase
      */
     public function test_implementation_withDifferentResources(): void
     {
-        $entity1 = new TestLockEntity('resource-1');
-        $entity2 = new TestLockEntity('resource-2');
+        $entity1 = $this->createTestEntity('resource-1');
+        $entity2 = $this->createTestEntity('resource-2');
 
         $this->assertEquals('resource-1', $entity1->retrieveLockResource());
         $this->assertEquals('resource-2', $entity2->retrieveLockResource());
@@ -69,7 +82,7 @@ class LockEntityTest extends TestCase
      */
     public function test_implementation_withEmptyResource(): void
     {
-        $entity = new TestLockEntity('');
+        $entity = $this->createTestEntity('');
 
         $this->assertEquals('', $entity->retrieveLockResource());
     }
@@ -80,7 +93,7 @@ class LockEntityTest extends TestCase
     public function test_implementation_withComplexResource(): void
     {
         $complexResource = 'user:123:action:update:timestamp:' . time();
-        $entity = new TestLockEntity($complexResource);
+        $entity = $this->createTestEntity($complexResource);
 
         $this->assertEquals($complexResource, $entity->retrieveLockResource());
     }
@@ -97,7 +110,7 @@ class LockEntityTest extends TestCase
             }
         };
 
-        $entity = new TestLockEntity('test-resource');
+        $entity = $this->createTestEntity('test-resource');
         $result = $processor->processLockEntity($entity);
 
         $this->assertEquals('processed:test-resource', $result);

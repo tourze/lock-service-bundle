@@ -13,20 +13,19 @@ use Symfony\Component\Lock\LockInterface;
 use Symfony\Component\Messenger\Event\WorkerRunningEvent;
 use Symfony\Component\Messenger\Event\WorkerStoppedEvent;
 use Symfony\Contracts\Service\ResetInterface;
+use Tourze\LockServiceBundle\Exception\LockAcquisitionException;
 use Tourze\LockServiceBundle\Model\LockEntity;
 
 /**
  * 跟请求上下文绑定的锁服务
  */
-#[AutoconfigureTag('as-coroutine')]
+#[AutoconfigureTag(name: 'as-coroutine')]
 class LockService implements ResetInterface
 {
     public function __construct(
         private readonly LockFactory $lockFactory,
         private readonly LoggerInterface $logger,
-    )
-    {
-    }
+    ) {}
 
     /**
      * @var array|LockInterface[]
@@ -107,7 +106,7 @@ class LockService implements ResetInterface
                 }
 
                 if (!$acquired) {
-                    throw new \RuntimeException(sprintf('无法获取资源 %s 的锁，已重试 %d 次', $resource, $maxRetries));
+                    throw new LockAcquisitionException($resource, $maxRetries);
                 }
                 $this->logger->debug('加锁成功' . $resource);
             }
@@ -167,7 +166,7 @@ class LockService implements ResetInterface
         }
 
         if (!$acquired) {
-            throw new \RuntimeException(sprintf('无法获取资源 %s 的锁，已重试 %d 次', $key, $maxRetries));
+            throw new LockAcquisitionException($key, $maxRetries);
         }
 
         $this->existLocks[$key] = $lock;
