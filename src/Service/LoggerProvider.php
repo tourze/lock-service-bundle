@@ -7,9 +7,9 @@ use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
 #[WithMonologChannel(channel: 'lock')]
-class LoggerProvider
+readonly class LoggerProvider
 {
-    public function __construct(private readonly LoggerInterface $logger)
+    public function __construct(private LoggerInterface $logger)
     {
     }
 
@@ -36,7 +36,6 @@ class LoggerProvider
         }
 
         // 优先级3: 命令行参数检测（仅在没有明确环境变量时）
-        // @phpstan-ignore-next-line $_SERVER is needed for testing environment detection
         if (isset($_SERVER['argv']) && str_contains(implode(' ', $_SERVER['argv']), 'phpunit')) {
             return true;
         }
