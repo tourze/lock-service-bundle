@@ -5,8 +5,23 @@ services:
     autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
     public: false
 
-  Tourze\LockServiceBundle\Service\:
-    resource: '../../Service/'
+  # 明确定义 Factory 服务
+  Tourze\LockServiceBundle\Factory\DoctrineDbalStoreFactory:
+    autowire: true
+  Tourze\LockServiceBundle\Factory\RedisStoreFactory:
+    autowire: true
+
+  # 明确定义 Service 服务，不使用 exclude
+  Tourze\LockServiceBundle\Service\LockService:
+    arguments:
+      $lockFactory: '@Symfony\Component\Lock\LockFactory'
+      $logger: '@lock_service.logger'
+
+  # LoggerProvider 需要原始的 logger，不能使用自己
+  Tourze\LockServiceBundle\Service\LoggerProvider:
+    arguments:
+      $logger: '@logger'
+
 
   # 默认FlockStore是写到临时目录的，多项目同时跑可能有冲突，我们将其改为项目目录吧
   Symfony\Component\Lock\Store\FlockStore:
@@ -14,17 +29,29 @@ services:
     tags: [ 'lock.store' ]
     lazy: true
   Tourze\LockServiceBundle\Store\RedisClusterStore:
-    arguments: [ '@snc_redis.lock' ]
+    factory: ['@Tourze\LockServiceBundle\Factory\RedisStoreFactory', 'create']
     tags: [ 'lock.store' ]
-    lazy: true
   Symfony\Component\Lock\Store\DoctrineDbalStore:
-    arguments: [ '@doctrine.dbal.lock_connection' ]
+    factory: ['@Tourze\LockServiceBundle\Factory\DoctrineDbalStoreFactory', 'create']
     tags: [ 'lock.store' ]
     lazy: true
   Tourze\LockServiceBundle\Store\SmartLockStore:
     autowire: true
     tags: [ 'lock.store' ]
-    lazy: true
-  Symfony\Component\Lock\LockFactory:
+
+  # 测试环境下使用 NullLogger，其他环境使用实际的 logger
+  lock_service.logger:
+    class: Psr\Log\LoggerInterface
+    factory: ['@Tourze\LockServiceBundle\Service\LoggerProvider', 'getLogger']
+    public: true  # 测试环境需要访问
+
+  # 明确定义我们的 LockFactory，覆盖 Symfony 默认的
+  lock_service.lock_factory:
+    class: Symfony\Component\Lock\LockFactory
     arguments: [ '@Tourze\LockServiceBundle\Store\SmartLockStore' ]
-    lazy: true
+    calls:
+      - setLogger: [ '@lock_service.logger' ]
+    public: true  # 测试环境需要访问
+
+  # 为了保持向后兼容，将标准 LockFactory 别名指向我们的服务
+  Symfony\Component\Lock\LockFactory: '@lock_service.lock_factory'

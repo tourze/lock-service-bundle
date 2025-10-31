@@ -2,16 +2,18 @@
 
 namespace Tourze\LockServiceBundle;
 
-use Snc\RedisBundle\SncRedisBundle;
+use Doctrine\Bundle\DoctrineBundle\DoctrineBundle;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 use Tourze\BundleDependency\BundleDependencyInterface;
+use Tourze\RedisDedicatedConnectionBundle\RedisDedicatedConnectionBundle;
 
 class LockServiceBundle extends Bundle implements BundleDependencyInterface
 {
     public static function getBundleDependencies(): array
     {
         return [
-            SncRedisBundle::class => ['all' => true],
+            DoctrineBundle::class => ['all' => true],
+            RedisDedicatedConnectionBundle::class => ['all' => true],
         ];
     }
 }

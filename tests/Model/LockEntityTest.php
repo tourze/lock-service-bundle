@@ -2,13 +2,17 @@
 
 namespace Tourze\LockServiceBundle\Tests\Model;
 
+use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Tourze\LockServiceBundle\Model\LockEntity;
 
 /**
  * LockEntity 接口测试
+ *
+ * @internal
  */
-class LockEntityTest extends TestCase
+#[CoversClass(LockEntity::class)]
+final class LockEntityTest extends TestCase
 {
     /**
      * 创建测试用的LockEntity实现
@@ -16,14 +20,21 @@ class LockEntityTest extends TestCase
     private function createTestEntity(string $resource): LockEntity
     {
         return new class($resource) implements LockEntity {
-            public function __construct(private readonly string $resource) {}
-            public function retrieveLockResource(): string { return $this->resource; }
+            public function __construct(private readonly string $resource)
+            {
+            }
+
+            public function retrieveLockResource(): string
+            {
+                return $this->resource;
+            }
         };
     }
+
     /**
      * 测试接口方法存在
      */
-    public function test_interface_hasRequiredMethod(): void
+    public function testInterfaceHasRequiredMethod(): void
     {
         $reflection = new \ReflectionClass(LockEntity::class);
 
@@ -31,13 +42,13 @@ class LockEntityTest extends TestCase
 
         $method = $reflection->getMethod('retrieveLockResource');
         $this->assertTrue($method->isPublic());
-        $this->assertEquals('string', (string)$method->getReturnType());
+        $this->assertEquals('string', (string) $method->getReturnType());
     }
 
     /**
      * 测试接口实现
      */
-    public function test_implementation_worksCorrectly(): void
+    public function testImplementationWorksCorrectly(): void
     {
         $implementation = new class implements LockEntity {
             public function retrieveLockResource(): string
@@ -46,28 +57,32 @@ class LockEntityTest extends TestCase
             }
         };
 
-        $this->assertInstanceOf(LockEntity::class, $implementation);
         $this->assertEquals('test-lock-resource', $implementation->retrieveLockResource());
     }
 
     /**
      * 测试具体实现类
      */
-    public function test_concreteImplementation(): void
+    public function testConcreteImplementation(): void
     {
         $entity = new class('my-resource') implements LockEntity {
-            public function __construct(private readonly string $resource) {}
-            public function retrieveLockResource(): string { return $this->resource; }
+            public function __construct(private readonly string $resource)
+            {
+            }
+
+            public function retrieveLockResource(): string
+            {
+                return $this->resource;
+            }
         };
 
-        $this->assertInstanceOf(LockEntity::class, $entity);
         $this->assertEquals('my-resource', $entity->retrieveLockResource());
     }
 
     /**
      * 测试不同资源标识符
      */
-    public function test_implementation_withDifferentResources(): void
+    public function testImplementationWithDifferentResources(): void
     {
         $entity1 = $this->createTestEntity('resource-1');
         $entity2 = $this->createTestEntity('resource-2');
@@ -80,7 +95,7 @@ class LockEntityTest extends TestCase
     /**
      * 测试空资源标识符
      */
-    public function test_implementation_withEmptyResource(): void
+    public function testImplementationWithEmptyResource(): void
     {
         $entity = $this->createTestEntity('');
 
@@ -90,7 +105,7 @@ class LockEntityTest extends TestCase
     /**
      * 测试复杂资源标识符
      */
-    public function test_implementation_withComplexResource(): void
+    public function testImplementationWithComplexResource(): void
     {
         $complexResource = 'user:123:action:update:timestamp:' . time();
         $entity = $this->createTestEntity($complexResource);
@@ -101,7 +116,7 @@ class LockEntityTest extends TestCase
     /**
      * 测试接口可以用作类型提示
      */
-    public function test_interface_canBeUsedAsTypeHint(): void
+    public function testInterfaceCanBeUsedAsTypeHint(): void
     {
         $processor = new class {
             public function processLockEntity(LockEntity $entity): string

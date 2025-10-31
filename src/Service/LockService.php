@@ -25,7 +25,8 @@ class LockService implements ResetInterface
     public function __construct(
         private readonly LockFactory $lockFactory,
         private readonly LoggerInterface $logger,
-    ) {}
+    ) {
+    }
 
     /**
      * @var array|LockInterface[]
@@ -50,15 +51,35 @@ class LockService implements ResetInterface
      * 带锁执行指定逻辑
      * 当有同样锁的逻辑在执行时，系统会暂停等待
      *
-     * @param LockEntity|string|array<mixed> $entity
+     * @param LockEntity|string|array<LockEntity|string> $entity
      */
     public function blockingRun(LockEntity|string|array $entity, callable $callback): mixed
     {
+        $resources = $this->prepareResources($entity);
+        $resources = $this->filterExistingLocks($resources);
+
+        if ([] === $resources) {
+            return call_user_func($callback);
+        }
+
+        return $this->executeWithLocks($resources, $callback);
+    }
+
+    /**
+     * 准备资源列表
+     *
+     * @param LockEntity|string|array<LockEntity|string> $entity
+     *
+     * @return array<string>
+     */
+    private function prepareResources(LockEntity|string|array $entity): array
+    {
         $resources = [];
+
         if (is_array($entity)) {
             foreach ($entity as $item) {
                 $k = $this->getLockKey($item);
-                if (empty($k)) {
+                if ('' === $k) {
                     continue;
                 }
                 $resources[] = $k;
@@ -69,76 +90,143 @@ class LockService implements ResetInterface
             $resources[] = $this->getLockKey($entity);
         }
 
-        // 如果这个锁已经被当前业务拿了，那我们不要继续锁
+        return $resources;
+    }
+
+    /**
+     * 过滤掉已存在的锁
+     *
+     * @param array<string> $resources
+     *
+     * @return array<string>
+     */
+    private function filterExistingLocks(array $resources): array
+    {
         foreach ($resources as $k => $resource) {
             if (isset($this->currentLocks[$resource])) {
                 unset($resources[$k]);
             }
         }
 
-        // 没有锁就直接执行
-        if (empty($resources)) {
-            return call_user_func($callback);
-        }
+        return $resources;
+    }
 
-        // 有多个锁，那么我们要同时锁了
-        /** @var LockInterface[] $lockArr */
-        $lockArr = [];
+    /**
+     * 带锁执行回调
+     *
+     * @param array<string> $resources
+     */
+    private function executeWithLocks(array $resources, callable $callback): mixed
+    {
+        $lockArr = $this->acquireAllLocks($resources);
 
         try {
-            foreach ($resources as $resource) {
-                $lockArr[$resource] = $lock = $this->lockFactory->createLock($resource);
-
-                // 尝试获取锁，最多重试3次
-                $maxRetries = 3;
-                $retryCount = 0;
-                $acquired = false;
-
-                while ($retryCount < $maxRetries) {
-                    if ($lock->acquire(true)) {
-                        $acquired = true;
-                        break;
-                    }
-                    $retryCount++;
-                    if ($retryCount < $maxRetries) {
-                        usleep(100000); // 休眠 0.1 秒后重试
-                    }
-                }
-
-                if (!$acquired) {
-                    throw new LockAcquisitionException($resource, $maxRetries);
-                }
-                $this->logger->debug('加锁成功' . $resource);
-            }
-
-            // 执行到这里，代表所有锁都拿到了
-            foreach ($resources as $resource) {
-                $this->currentLocks[$resource] = time();
-            }
+            $this->markLocksAsAcquired($resources);
 
             return call_user_func($callback);
         } finally {
-            foreach ($lockArr as $resource => $acquiredLock) {
-                try {
-                    if (!$acquiredLock->isAcquired()) {
-                        continue;
-                    }
-                    $acquiredLock->release();
-                    $this->logger->debug('释放锁成功' . $resource);
-                } catch (LockReleasingException $e) {
-                    $this->logger->error('释放锁失败', [
-                        'exception' => $e,
-                        'lock' => $acquiredLock,
-                        'resource' => $resource,
-                        'resources' => $resources,
-                    ]);
-                }
+            $this->releaseAllLocks($lockArr, $resources);
+            $this->unmarkLocks($resources);
+        }
+    }
+
+    /**
+     * 获取所有需要的锁
+     *
+     * @param array<string> $resources
+     *
+     * @return array<string, LockInterface>
+     */
+    private function acquireAllLocks(array $resources): array
+    {
+        $lockArr = [];
+
+        foreach ($resources as $resource) {
+            $lock = $this->lockFactory->createLock($resource);
+            $lockArr[$resource] = $lock;
+
+            if (!$this->acquireLockWithRetry($lock)) {
+                throw new LockAcquisitionException($resource, 3);
             }
 
-            // 去除当前锁
-            foreach ($resources as $resource) {
-                unset($this->currentLocks[$resource]);
+            if (!filter_var($_ENV['DISABLE_LOGGING_IN_TESTS'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                $this->logger->debug('加锁成功' . $resource);
             }
+        }
+
+        return $lockArr;
+    }
+
+    /**
+     * 带重试机制获取锁
+     */
+    private function acquireLockWithRetry(LockInterface $lock): bool
+    {
+        $maxRetries = 3;
+        $retryCount = 0;
+
+        while ($retryCount < $maxRetries) {
+            if ($lock->acquire(true)) {
+                return true;
+            }
+            ++$retryCount;
+            if ($retryCount < $maxRetries) {
+                usleep(100000); // 休眠 0.1 秒后重试
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 标记锁为已获取
+     *
+     * @param array<string> $resources
+     */
+    private function markLocksAsAcquired(array $resources): void
+    {
+        foreach ($resources as $resource) {
+            $this->currentLocks[$resource] = time();
+        }
+    }
+
+    /**
+     * 释放所有锁
+     *
+     * @param array<string, LockInterface> $lockArr
+     * @param array<string>                $resources
+     */
+    private function releaseAllLocks(array $lockArr, array $resources): void
+    {
+        foreach ($lockArr as $resource => $acquiredLock) {
+            try {
+                if (!$acquiredLock->isAcquired()) {
+                    continue;
+                }
+                $acquiredLock->release();
+                if (!filter_var($_ENV['DISABLE_LOGGING_IN_TESTS'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+                    $this->logger->debug('释放锁成功' . $resource);
+                }
+            } catch (LockReleasingException $e) {
+                $this->logger->error('释放锁失败', [
+                    'exception' => $e,
+                    'lock' => $acquiredLock,
+                    'resource' => $resource,
+                    'resources' => $resources,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * 取消锁标记
+     *
+     * @param array<string> $resources
+     */
+    private function unmarkLocks(array $resources): void
+    {
+        foreach ($resources as $resource) {
+            unset($this->currentLocks[$resource]);
         }
     }
 
@@ -159,7 +247,7 @@ class LockService implements ResetInterface
                 $acquired = true;
                 break;
             }
-            $retryCount++;
+            ++$retryCount;
             if ($retryCount < $maxRetries) {
                 usleep(100000); // 休眠 0.1 秒后重试
             }
@@ -170,6 +258,7 @@ class LockService implements ResetInterface
         }
 
         $this->existLocks[$key] = $lock;
+
         return $lock;
     }
 

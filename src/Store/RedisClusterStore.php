@@ -2,6 +2,7 @@
 
 namespace Tourze\LockServiceBundle\Store;
 
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\Lock\Exception\InvalidTtlException;
 use Symfony\Component\Lock\Exception\LockConflictedException;
 use Symfony\Component\Lock\Exception\LockStorageException;
@@ -12,6 +13,7 @@ use Symfony\Component\Lock\Store\ExpiringStoreTrait;
 /**
  * 兼容Redis集群，主要是阿里云那种
  */
+#[Autoconfigure(lazy: true)]
 class RedisClusterStore implements SharedLockStoreInterface
 {
     use ExpiringStoreTrait;
@@ -230,7 +232,10 @@ class RedisClusterStore implements SharedLockStoreInterface
             $key->setState(__CLASS__, $token);
         }
 
-        return $key->getState(__CLASS__);
+        $state = $key->getState(__CLASS__);
+        assert(is_string($state));
+
+        return $state;
     }
 
     private function getNowCode(): string

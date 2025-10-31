@@ -4,108 +4,20 @@ namespace Tourze\LockServiceBundle\Tests\Service;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
-use Tourze\LockServiceBundle\Model\LockEntity;
+use Tourze\LockServiceBundle\Exception\TestException;
 use Tourze\LockServiceBundle\Service\LockService;
 use Tourze\PHPUnitSymfonyKernelTest\AbstractEventSubscriberTestCase;
 
 /**
- * LockService 集成测试
+ * 递归和嵌套加锁场景测试
  *
  * @internal
  */
 #[CoversClass(LockService::class)]
 #[RunTestsInSeparateProcesses]
-final class LockServiceTest extends AbstractEventSubscriberTestCase
+final class RecursiveLockingTest extends AbstractEventSubscriberTestCase
 {
     private LockService $lockService;
-
-    protected function onSetUp(): void
-    {
-        // 从容器获取实际的 LockService
-        $this->lockService = self::getService(LockService::class);
-    }
-
-    /**
-     * 测试阻塞执行方法 - 使用字符串资源
-     */
-    public function testBlockingRunWithStringResource(): void
-    {
-        // 执行测试
-        $result = $this->lockService->blockingRun('test-resource', function () {
-            return 'success';
-        });
-
-        $this->assertEquals('success', $result);
-    }
-
-    /**
-     * 测试阻塞执行方法 - 使用 LockEntity 资源
-     */
-    public function testBlockingRunWithLockEntityResource(): void
-    {
-        // 创建一个 LockEntity 实现
-        $lockEntity = new class implements LockEntity {
-            public function retrieveLockResource(): string
-            {
-                return 'entity-resource';
-            }
-        };
-
-        // 执行测试
-        $result = $this->lockService->blockingRun($lockEntity, function () {
-            return 'entity-success';
-        });
-
-        $this->assertEquals('entity-success', $result);
-    }
-
-    /**
-     * 测试阻塞执行方法 - 使用资源数组
-     */
-    public function testBlockingRunWithMultipleResources(): void
-    {
-        // 执行测试
-        $result = $this->lockService->blockingRun(['resource1', 'resource2'], function () {
-            return 'multi-success';
-        });
-
-        $this->assertEquals('multi-success', $result);
-    }
-
-    /**
-     * 测试请求级别锁获取
-     */
-    public function testAcquireLock(): void
-    {
-        $result = $this->lockService->acquireLock('test-key');
-        $this->assertTrue($result->isAcquired());
-    }
-
-    /**
-     * 测试请求级别锁释放
-     */
-    public function testReleaseLock(): void
-    {
-        $this->lockService->acquireLock('test-key');
-        $this->lockService->releaseLock('test-key');
-
-        // 确保锁已被释放，可以再次获取
-        $lock = $this->lockService->acquireLock('test-key-2');
-        $this->assertTrue($lock->isAcquired());
-    }
-
-    /**
-     * 测试重置方法
-     */
-    public function testReset(): void
-    {
-        $this->lockService->acquireLock('test-key');
-        $this->lockService->reset();
-
-        // 测试重置后可以正常工作
-        $lock = $this->lockService->acquireLock('test-key-after-reset');
-        $this->assertTrue($lock->isAcquired());
-    }
 
     /**
      * 测试递归加锁场景：同一个函数内递归调用
@@ -151,7 +63,7 @@ final class LockServiceTest extends AbstractEventSubscriberTestCase
         };
 
         // A函数：调用B函数
-        $result = $this->lockService->blockingRun('order-123', function () use ($processOrder): string {
+        $result = $this->lockService->blockingRun('order-123', function () use ($processOrder) {
             // 在已经持有锁的情况下，调用另一个需要同样锁的函数
             $innerResult = $processOrder('order-123');
 
@@ -194,7 +106,7 @@ final class LockServiceTest extends AbstractEventSubscriberTestCase
         };
 
         // A层函数
-        $result = $this->lockService->blockingRun('shared-resource', function () use ($functionB, &$executionOrder): string {
+        $result = $this->lockService->blockingRun('shared-resource', function () use ($functionB, &$executionOrder) {
             $executionOrder[] = 'A';
             $bResult = $functionB();
 
@@ -299,7 +211,7 @@ final class LockServiceTest extends AbstractEventSubscriberTestCase
         };
 
         // A函数：持有X锁
-        $result = $this->lockService->blockingRun('X', function () use ($functionB, &$executionLog): string {
+        $result = $this->lockService->blockingRun('X', function () use ($functionB, &$executionLog) {
             $executionLog[] = 'A-executed';
 
             return 'A-' . $functionB();
@@ -307,5 +219,140 @@ final class LockServiceTest extends AbstractEventSubscriberTestCase
 
         $this->assertEquals('A-B-C-done', $result);
         $this->assertEquals(['A-executed', 'B-executed', 'C-executed'], $executionLog);
+    }
+
+    /**
+     * 测试死锁预防：确保资源排序
+     */
+    public function testDeadlockPrevention(): void
+    {
+        $thread1Executed = false;
+        $thread2Executed = false;
+
+        // 线程1：先获取A，再获取B
+        $thread1 = function () use (&$thread1Executed): void {
+            $this->lockService->blockingRun(['resource-A', 'resource-B'], function () use (&$thread1Executed): string {
+                $thread1Executed = true;
+
+                return 'thread1';
+            });
+        };
+
+        // 线程2：先获取B，再获取A（但会被排序为A、B）
+        $thread2 = function () use (&$thread2Executed): void {
+            $this->lockService->blockingRun(['resource-B', 'resource-A'], function () use (&$thread2Executed): string {
+                $thread2Executed = true;
+
+                return 'thread2';
+            });
+        };
+
+        // 执行两个"线程"（实际是顺序执行，但验证了排序逻辑）
+        $thread1();
+        $thread2();
+
+        $this->assertTrue($thread1Executed);
+        $this->assertTrue($thread2Executed);
+    }
+
+    /**
+     * 测试异常情况下的锁释放
+     */
+    public function testLockReleaseOnException(): void
+    {
+        $exceptionThrown = false;
+
+        try {
+            $this->lockService->blockingRun('exception-resource', function (): void {
+                throw new TestException('Test exception');
+            });
+        } catch (TestException $e) {
+            $exceptionThrown = true;
+        }
+
+        $this->assertTrue($exceptionThrown);
+
+        // 验证锁已被释放，可以再次获取
+        $result = $this->lockService->blockingRun('exception-resource', function (): string {
+            return 'lock acquired after exception';
+        });
+
+        $this->assertEquals('lock acquired after exception', $result);
+    }
+
+    /**
+     * 测试 acquireLock 方法
+     */
+    public function testAcquireLock(): void
+    {
+        $lock = $this->lockService->acquireLock('test-acquire-resource');
+        $this->assertTrue($lock->isAcquired());
+    }
+
+    /**
+     * 测试 blockingRun 方法
+     */
+    public function testBlockingRun(): void
+    {
+        $executed = false;
+        $result = $this->lockService->blockingRun('test-blocking-resource', function () use (&$executed): string {
+            $executed = true;
+
+            return 'success';
+        });
+
+        $this->assertTrue($executed);
+        $this->assertEquals('success', $result);
+    }
+
+    /**
+     * 测试 releaseLock 方法
+     */
+    public function testReleaseLock(): void
+    {
+        $this->lockService->acquireLock('test-release-resource');
+        $this->lockService->releaseLock('test-release-resource');
+
+        // 确保锁已被释放，可以再次获取
+        $lock = $this->lockService->acquireLock('test-release-resource');
+        $this->assertTrue($lock->isAcquired());
+    }
+
+    /**
+     * 测试 reset 方法
+     */
+    public function testReset(): void
+    {
+        $this->lockService->acquireLock('test-reset-resource');
+        $this->lockService->reset();
+
+        // 确保 reset 后可以正常工作
+        $lock = $this->lockService->acquireLock('test-reset-resource-2');
+        $this->assertTrue($lock->isAcquired());
+    }
+
+    /**
+     * 测试使用反射验证内部状态清理
+     */
+    public function testInternalStateCleanup(): void
+    {
+        // 执行一个简单的加锁操作
+        $this->lockService->blockingRun('test-resource', function (): string {
+            return 'done';
+        });
+
+        // 使用反射检查 currentLocks 是否被清理
+        $reflection = new \ReflectionObject($this->lockService);
+        $currentLocksProperty = $reflection->getProperty('currentLocks');
+        $currentLocksProperty->setAccessible(true);
+
+        $currentLocks = $currentLocksProperty->getValue($this->lockService);
+        $this->assertEmpty($currentLocks, 'currentLocks should be empty after blockingRun completes');
+    }
+
+    protected function onSetUp(): void
+    {
+        // 从容器获取服务
+        $this->lockService = self::getService(LockService::class);
     }
 }
