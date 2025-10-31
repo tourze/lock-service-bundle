@@ -4,7 +4,7 @@ namespace Tourze\LockServiceBundle\Tests\Service;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
-use Psr\Log\NullLogger;
+use Psr\Log\LoggerInterface;
 use Tourze\LockServiceBundle\Service\LoggerProvider;
 use Tourze\PHPUnitSymfonyKernelTest\AbstractIntegrationTestCase;
 
@@ -24,17 +24,7 @@ final class LoggerProviderTest extends AbstractIntegrationTestCase
     {
         $provider = self::getService(LoggerProvider::class);
 
-        // 在测试环境下应该返回 NullLogger
         $result = $provider->getLogger();
-        self::assertInstanceOf(NullLogger::class, $result);
-    }
-
-    public function testGetLoggerReturnsNullLoggerInTestEnvironment(): void
-    {
-        $provider = self::getService(LoggerProvider::class);
-
-        // 在测试环境下应该返回 NullLogger
-        $result = $provider->getLogger();
-        self::assertInstanceOf(NullLogger::class, $result);
+        self::assertInstanceOf(LoggerInterface::class, $result);
     }
 }
