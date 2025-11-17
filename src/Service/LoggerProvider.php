@@ -1,12 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tourze\LockServiceBundle\Service;
 
 use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
-#[WithMonologChannel(channel: 'lock')]
+#[WithMonologChannel(channel: 'lock_service')]
 readonly class LoggerProvider
 {
     public function __construct(private LoggerInterface $logger)
