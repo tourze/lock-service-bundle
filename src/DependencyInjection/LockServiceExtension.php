@@ -4,7 +4,7 @@ namespace Tourze\LockServiceBundle\DependencyInjection;
 
 use Tourze\SymfonyDependencyServiceLoader\AppendDoctrineConnectionExtension;
 
-class LockServiceExtension extends AppendDoctrineConnectionExtension
+final class LockServiceExtension extends AppendDoctrineConnectionExtension
 {
     protected function getConfigDir(): string
     {

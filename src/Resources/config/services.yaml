@@ -5,38 +5,30 @@ services:
     autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
     public: false
 
-  # 明确定义 Factory 服务
-  Tourze\LockServiceBundle\Factory\DoctrineDbalStoreFactory:
-    autowire: true
-  Tourze\LockServiceBundle\Factory\RedisStoreFactory:
-    autowire: true
+  # 按目录注册服务
+  Tourze\LockServiceBundle\Factory\:
+    resource: '../../Factory/'
 
-  # 明确定义 Service 服务，不使用 exclude
-  Tourze\LockServiceBundle\Service\LockService:
-    arguments:
-      $lockFactory: '@Symfony\Component\Lock\LockFactory'
-      $logger: '@lock_service.logger'
+  Tourze\LockServiceBundle\Service\:
+    resource: '../../Service/'
 
-  # LoggerProvider 需要原始的 logger，不能使用自己
-  Tourze\LockServiceBundle\Service\LoggerProvider:
-    arguments:
-      $logger: '@logger'
-
-
+  # Store 配置（保留特殊配置）
   # 默认FlockStore是写到临时目录的，多项目同时跑可能有冲突，我们将其改为项目目录吧
   Symfony\Component\Lock\Store\FlockStore:
     arguments: [ '%kernel.cache_dir%' ]
     tags: [ 'lock.store' ]
     lazy: true
+
   Tourze\LockServiceBundle\Store\RedisClusterStore:
     factory: ['@Tourze\LockServiceBundle\Factory\RedisStoreFactory', 'create']
     tags: [ 'lock.store' ]
+
   Symfony\Component\Lock\Store\DoctrineDbalStore:
     factory: ['@Tourze\LockServiceBundle\Factory\DoctrineDbalStoreFactory', 'create']
     tags: [ 'lock.store' ]
     lazy: true
+
   Tourze\LockServiceBundle\Store\SmartLockStore:
-    autowire: true
     tags: [ 'lock.store' ]
 
   # 测试环境下使用 NullLogger，其他环境使用实际的 logger

@@ -14,7 +14,7 @@ use Symfony\Component\Lock\Store\ExpiringStoreTrait;
  * 兼容Redis集群，主要是阿里云那种
  */
 #[Autoconfigure(lazy: true)]
-class RedisClusterStore implements SharedLockStoreInterface
+final class RedisClusterStore implements SharedLockStoreInterface
 {
     use ExpiringStoreTrait;
 

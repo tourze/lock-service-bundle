@@ -14,7 +14,7 @@ use Symfony\Component\Lock\Store\FlockStore;
  * @see https://symfony.com/doc/current/components/lock.html#blocking-locks
  */
 #[Autoconfigure(lazy: true)]
-class SmartLockStore implements PersistingStoreInterface
+final class SmartLockStore implements PersistingStoreInterface
 {
     private PersistingStoreInterface $inner;
 

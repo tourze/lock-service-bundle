@@ -7,7 +7,7 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
 use Tourze\BundleDependency\BundleDependencyInterface;
 use Tourze\RedisDedicatedConnectionBundle\RedisDedicatedConnectionBundle;
 
-class LockServiceBundle extends Bundle implements BundleDependencyInterface
+final class LockServiceBundle extends Bundle implements BundleDependencyInterface
 {
     public static function getBundleDependencies(): array
     {

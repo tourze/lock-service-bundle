@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tourze\LockServiceBundle\Service;
 
+use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\ConsoleEvents;
 use Symfony\Component\DependencyInjection\Attribute\AutoconfigureTag;
@@ -22,7 +23,8 @@ use Tourze\LockServiceBundle\Model\LockEntity;
  * 跟请求上下文绑定的锁服务
  */
 #[AutoconfigureTag(name: 'as-coroutine')]
-class LockService implements ResetInterface
+#[WithMonologChannel(channel: 'lock_service')]
+final class LockService implements ResetInterface
 {
     public function __construct(
         private readonly LockFactory $lockFactory,

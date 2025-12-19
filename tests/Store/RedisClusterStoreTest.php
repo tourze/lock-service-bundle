@@ -26,20 +26,16 @@ final class RedisClusterStoreTest extends AbstractIntegrationTestCase
     }
 
     /**
-     * 测试构造函数抛出无效 TTL 异常
+     * 测试构造函数抛出无效 TTL 异常（负数）
      *
-     * @ignore 为了测试构造函数逻辑，需要直接实例化
+     * @phpstan-ignore integrationTest.noDirectInstantiationOfCoveredClass
      */
-    public function testConstructorThrowsInvalidTtlException(): void
+    public function testConstructorThrowsInvalidTtlExceptionForNegative(): void
     {
         $this->expectException(InvalidTtlException::class);
         $this->expectExceptionMessage('expects a strictly positive TTL');
 
-        // Mock Redis 服务
         $redis = $this->createMockRedis();
-        self::getContainer()->set(\Redis::class, $redis);
-
-        // 直接实例化以测试构造函数异常
         // @phpstan-ignore integrationTest.noDirectInstantiationOfCoveredClass
         new RedisClusterStore($redis, -1.0);
     }
@@ -47,18 +43,14 @@ final class RedisClusterStoreTest extends AbstractIntegrationTestCase
     /**
      * 测试构造函数抛出零 TTL 异常
      *
-     * @ignore 为了测试构造函数逻辑，需要直接实例化
+     * @phpstan-ignore integrationTest.noDirectInstantiationOfCoveredClass
      */
     public function testConstructorThrowsInvalidTtlExceptionForZero(): void
     {
         $this->expectException(InvalidTtlException::class);
         $this->expectExceptionMessage('expects a strictly positive TTL');
 
-        // Mock Redis 服务
         $redis = $this->createMockRedis();
-        self::getContainer()->set(\Redis::class, $redis);
-
-        // 直接实例化以测试构造函数异常
         // @phpstan-ignore integrationTest.noDirectInstantiationOfCoveredClass
         new RedisClusterStore($redis, 0.0);
     }
@@ -66,18 +58,14 @@ final class RedisClusterStoreTest extends AbstractIntegrationTestCase
     /**
      * 测试构造函数接受有效 TTL
      *
-     * @ignore 为了测试构造函数逻辑，需要直接实例化
+     * @phpstan-ignore integrationTest.noDirectInstantiationOfCoveredClass
      */
     public function testConstructorAcceptsValidTtl(): void
     {
-        // Mock Redis 服务
         $redis = $this->createMockRedis();
-        self::getContainer()->set(\Redis::class, $redis);
-
-        // 直接实例化以测试构造函数
         // @phpstan-ignore integrationTest.noDirectInstantiationOfCoveredClass
         $store = new RedisClusterStore($redis, 300.0);
-        $this->assertNotNull($store);
+        $this->assertInstanceOf(RedisClusterStore::class, $store);
     }
 
     /**
@@ -94,8 +82,6 @@ final class RedisClusterStoreTest extends AbstractIntegrationTestCase
         ];
         /** @var array<string, mixed> $mergedOptions */
         $mergedOptions = array_merge($defaultOptions, $options);
-
-        // @phpstan-ignore-next-line
         return new class($mergedOptions) extends \Redis {
             /** @var array<string, mixed> */
             private array $options;

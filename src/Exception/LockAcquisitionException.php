@@ -6,7 +6,7 @@ namespace Tourze\LockServiceBundle\Exception;
  * 锁获取异常
  * 当无法获取锁时抛出此异常
  */
-class LockAcquisitionException extends \RuntimeException
+final class LockAcquisitionException extends \RuntimeException
 {
     public function __construct(string $resource, int $maxRetries, ?\Throwable $previous = null)
     {
